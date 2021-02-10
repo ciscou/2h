@@ -63,7 +63,7 @@ function shouldIncludeVehicle(assetTypeSettings, vehicle) {
   return (
     vehicle.online && // redundant but hey, just in case...
     (vehicle.status === "free") &&
-    (vehicle.battery_percentage >= assetTypeSettings.batteryThreshold)
+    (vehicle.battery_percentage > assetTypeSettings.batteryThreshold)
   )
 }
 
