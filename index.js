@@ -20,7 +20,7 @@ function parseApiVehicle(av) {
     license_plate: av.license_plate,
     reference_code: av.reference_code,
     status: av.status,
-    available: av.external_status.available,
+    online: av.online,
     pos: { lat: av.latitude, lng: av.longitude },
     status: av.status,
     battery_percentage: av.total_percentage
@@ -61,7 +61,7 @@ function doNotBotherFetchingVehicles(assetTypeSettings) {
 
 function shouldIncludeVehicle(assetTypeSettings, vehicle) {
   return (
-    // v.available && // TODO looks like this is a combination of status + battery check?
+    vehicle.online && // redundant but hey, just in case...
     (vehicle.status === "free") &&
     (vehicle.battery_percentage >= assetTypeSettings.batteryThreshold)
   )
