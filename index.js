@@ -14,24 +14,6 @@ const client2Hire = axios.create({
   },
 });
 
-client2Hire.get(
-  '/admin/api/service/setting', {
-    params: {
-      site: SITE_ID
-    }
-  }
-).then(response => {
-  const settings = response.data['data']['specific'][SITE_ID]['service'];
-
-  ASSET_TYPES.forEach(function(assetType) {
-    console.log(assetType, "enabled", settings['vehicle']['enabled'][assetType]);
-    console.log(assetType, "battery threshold", settings['vehicle']['lowBattery'][assetType]);
-    console.log(assetType, "service hours", settings['availability'][assetType]['frames']);
-  });
-}).catch(err => {
-  console.error("Could not fetch service setting:", err.message, err.response && err.response.data);
-});
-
 function parseApiVehicle(av) {
   return {
     id: av.id,
@@ -43,6 +25,50 @@ function parseApiVehicle(av) {
     status: av.status,
     battery_percentage: av.total_percentage
   }
+}
+
+function parseApiServiceSettings(ass) {
+  const settings = {}
+
+  ASSET_TYPES.forEach(function(assetType) {
+    settings[assetType] = {
+      enabled: ass['vehicle']['enabled'][assetType],
+      batteryThreshold: ass['vehicle']['lowBattery'][assetType],
+      serviceHours: ass['availability'][assetType]['frames']
+    }
+  });
+
+  return settings;
+}
+
+function serviceEnabled(assetTypeSettings) {
+  return assetTypeSettings.enabled;
+}
+
+function withinServiceHours(assetTypeSettings) {
+  const now = new Date(); // TODO handle different TZs
+  const now_hhmm = now.getHours() * 100 + now.getMinutes();
+
+  matchingFrame = assetTypeSettings.serviceHours.find(frame => {
+    const start_hhmm = frame.start.hour * 100 + frame.start.minute;
+    const end_hhmm = frame.end.hour * 100 + frame.end.minute;
+
+    return (start_hhmm <= now_hhmm) && (now_hhmm <= end_hhmm)
+  });
+
+  return !!matchingFrame;
+}
+
+function doNotBotherFetchingVehicles(assetTypeSettings) {
+  return !serviceEnabled(assetTypeSettings) || !withinServiceHours(assetTypeSettings);
+}
+
+function shouldIncludeVehicle(assetTypeSettings, vehicle) {
+  return (
+    // v.available && // TODO looks like this is a combination of status + battery check?
+    (vehicle.status === "free") &&
+    (vehicle.battery_percentage >= assetTypeSettings.batteryThreshold)
+  )
 }
 
 function difference(vs1, vs2) {
@@ -57,8 +83,33 @@ function difference(vs1, vs2) {
   return diff;
 }
 
-function fetchAdminVehicles(assetType) {
+function fetchServiceSettings() {
   return new Promise(function(resolve, reject) {
+    client2Hire.get(
+      '/admin/api/service/setting', {
+        params: {
+          site: SITE_ID
+        }
+      }
+    ).then(response => {
+      const apiServiceSettings = response.data['data']['specific'][SITE_ID]['service'];
+
+      resolve(parseApiServiceSettings(apiServiceSettings));
+    }).catch(err => {
+      console.error("Could not fetch service setting:", err.message, err.response && err.response.data);
+
+      reject(err)
+    });
+  });
+}
+
+function fetchAdminVehicles(assetType, assetTypeSettings) {
+  return new Promise(function(resolve, reject) {
+    if(doNotBotherFetchingVehicles(assetTypeSettings)) {
+      resolve([]);
+      return;
+    }
+
     client2Hire.get(
       '/admin/api/sharing/vehicle', {
         params: {
@@ -76,8 +127,10 @@ function fetchAdminVehicles(assetType) {
       const vehicles = {};
 
       response.data['data'].forEach(av => {
-        if(av.external_status.available) {
-          vehicles[av.id] = parseApiVehicle(av);
+        const v = parseApiVehicle(av);
+
+        if(shouldIncludeVehicle(assetTypeSettings, v)) {
+          vehicles[v.id] = v;
         }
       });
 
@@ -119,8 +172,8 @@ function fetchUserVehicles(assetType) {
   });
 }
 
-function showDifferences(assetType) {
-  Promise.all([fetchAdminVehicles(assetType), fetchUserVehicles(assetType)])
+function showDifferences(assetType, assetTypeSettings) {
+  Promise.all([fetchAdminVehicles(assetType, assetTypeSettings), fetchUserVehicles(assetType)])
     .then(([adminVehicles, userVehicles]) => {
       const adminVehiclesNotInUserVehicles = difference(adminVehicles, userVehicles);
       const userVehiclesNotInAdminVehicles = difference(userVehicles, adminVehicles);
@@ -135,6 +188,14 @@ function showDifferences(assetType) {
     })
 }
 
-ASSET_TYPES.forEach(function(assetType) {
-  showDifferences(assetType);
-});
+fetchServiceSettings()
+  .then(settings => {
+    console.log("settings", settings);
+
+    ASSET_TYPES.forEach(function(assetType) {
+      showDifferences(assetType, settings[assetType]);
+    });
+  })
+  .catch(err => {
+    console.error("Oooops!", err);
+  })
