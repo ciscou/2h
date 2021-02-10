@@ -41,10 +41,6 @@ function parseApiServiceSettings(ass) {
   return settings;
 }
 
-function serviceEnabled(assetTypeSettings) {
-  return assetTypeSettings.enabled;
-}
-
 function withinServiceHours(assetTypeSettings) {
   const now = new Date(); // TODO handle different TZs
   const now_hhmm = now.getHours() * 100 + now.getMinutes();
@@ -60,7 +56,7 @@ function withinServiceHours(assetTypeSettings) {
 }
 
 function doNotBotherFetchingVehicles(assetTypeSettings) {
-  return !serviceEnabled(assetTypeSettings) || !withinServiceHours(assetTypeSettings);
+  return !assetTypeSettings.enabled || !withinServiceHours(assetTypeSettings);
 }
 
 function shouldIncludeVehicle(assetTypeSettings, vehicle) {
@@ -160,7 +156,9 @@ function fetchUserVehicles(assetType) {
       const vehicles = {};
 
       response.data['data'].forEach(av => {
-        vehicles[av.id] = parseApiVehicle(av);
+        const v = parseApiVehicle(av);
+
+        vehicles[v.id] = v;
       });
 
       resolve(vehicles);
