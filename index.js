@@ -186,6 +186,49 @@ function showDifferences(assetType, assetTypeSettings) {
     })
 }
 
+function fetchWebhooks() {
+  return new Promise((resolve, reject) => {
+    client2Hire.get('/admin/api/webhooks')
+      .then(response => resolve(response.data.data))
+      .catch(err => reject(err))
+  });
+}
+
+function unsubscribe(topic) {
+  return new Promise((resolve, reject) => {
+    client2Hire.put('/admin/api/webhooks', {hub:{
+      callback: 'https://en04owucfjwr2d.x.pipedream.net',
+      mode: 'unsubscribe',
+      topic: topic,
+      secret: 'qwertyuiop'
+    }})
+      .then(response => resolve(response.data))
+      .catch(err => {
+        console.log("Could not unsubscribe", err.message, err.response && JSON.stringify(err.response.data))
+
+        reject(err)
+      })
+  });
+}
+
+function subscribe(topic) {
+  return new Promise((resolve, reject) => {
+    client2Hire.put('/admin/api/webhooks', {hub:{
+      callback: 'https://en04owucfjwr2d.x.pipedream.net',
+      mode: 'subscribe',
+      topic: topic,
+      secret: 'qwertyuiop'
+    }})
+      .then(response => resolve(response.data))
+      .catch(err => {
+        console.log("Could not subscribe", err.message, err.response && JSON.stringify(err.response.data))
+
+        reject(err)
+      })
+  });
+}
+
+/*
 fetchServiceSettings()
   .then(settings => {
     console.log("settings", settings);
@@ -197,3 +240,20 @@ fetchServiceSettings()
   .catch(err => {
     console.error("Oooops!", err);
   })
+*/
+
+/*
+subscribe('settings_update')
+  .then(response => console.log(response))
+  .catch(err => console.error("Oooops!", err));
+*/
+
+/*
+unsubscribe('settings_update')
+  .then(response => console.log(response))
+  .catch(err => console.error("Oooops!", err));
+*/
+
+fetchWebhooks()
+  .then(webhooks => console.log(webhooks))
+  .catch(err => console.error("Oooops!", err));
