@@ -2,7 +2,7 @@ require('dotenv').config();
 
 const SITE_ID = process.env.SITE_ID;
 
-const ASSET_TYPES = process.env.ASSET_TYPES.split(",")
+const ASSET_TYPES = process.env.ASSET_TYPES.split(',')
 
 const axios = require('axios');
 
@@ -62,7 +62,7 @@ function doNotBotherFetchingVehicles(assetTypeSettings) {
 function shouldIncludeVehicle(assetTypeSettings, vehicle) {
   return (
     vehicle.online && // redundant but hey, just in case...
-    (vehicle.status === "free") &&
+    (vehicle.status === 'free') &&
     (vehicle.battery_percentage > assetTypeSettings.batteryThreshold)
   )
 }
@@ -197,7 +197,7 @@ function fetchWebhooks() {
 function unsubscribe(topic) {
   return new Promise((resolve, reject) => {
     client2Hire.put('/admin/api/webhooks', {hub:{
-      callback: 'https://en04owucfjwr2d.x.pipedream.net',
+      callback: 'http://calanala.ddns.net/2h/callback',
       mode: 'unsubscribe',
       topic: topic,
       secret: 'qwertyuiop'
@@ -214,7 +214,7 @@ function unsubscribe(topic) {
 function subscribe(topic) {
   return new Promise((resolve, reject) => {
     client2Hire.put('/admin/api/webhooks', {hub:{
-      callback: 'https://en04owucfjwr2d.x.pipedream.net',
+      callback: 'http://calanala.ddns.net/2h/callback',
       mode: 'subscribe',
       topic: topic,
       secret: 'qwertyuiop'
@@ -257,3 +257,29 @@ unsubscribe('settings_update')
 fetchWebhooks()
   .then(webhooks => console.log(webhooks))
   .catch(err => console.error("Oooops!", err));
+
+/*
+subscribe('booking_start');
+subscribe('booking_cancel');
+subscribe('booking_end');
+subscribe('trip_start');
+subscribe('trip_end');
+subscribe('settings_update');
+subscribe('vehicle_status');
+subscribe('vehicle_battery');
+subscribe('vehicle_geofence');
+*/
+
+const express = require('express');
+
+const app = express();
+
+app.use(express.json());
+
+app.post('/2h/callback', (req, res) => {
+  console.log(req.body);
+
+  res.send('OK');
+});
+
+app.listen(3000, () => { console.log("Listening on port 3000") })
