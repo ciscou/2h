@@ -23,6 +23,7 @@ function parseApiVehicle(av) {
     online: av.online,
     pos: { lat: av.latitude, lng: av.longitude },
     status: av.status,
+    autonomy_meters: av.autonomy_meters,
     battery_percentage: av.total_percentage
   }
 }
@@ -56,10 +57,14 @@ function withinServiceHours(assetTypeSettings) {
 }
 
 function doNotBotherFetchingVehicles(assetTypeSettings) {
+  if(!assetTypeSettings) return false;
+
   return !assetTypeSettings.enabled || !withinServiceHours(assetTypeSettings);
 }
 
 function shouldIncludeVehicle(assetTypeSettings, vehicle) {
+  if(!assetTypeSettings) return true;
+
   return (
     vehicle.online && // redundant but hey, just in case...
     (vehicle.status === 'free') &&
@@ -228,6 +233,8 @@ function subscribe(topic) {
   });
 }
 
+fetchAdminVehicles("kick").then(r => console.log(r));
+
 /*
 fetchServiceSettings()
   .then(settings => {
@@ -254,9 +261,11 @@ unsubscribe('settings_update')
   .catch(err => console.error("Oooops!", err));
 */
 
+/*
 fetchWebhooks()
   .then(webhooks => console.log(webhooks))
   .catch(err => console.error("Oooops!", err));
+/*
 
 /*
 subscribe('booking_start');
